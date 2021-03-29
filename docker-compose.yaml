@@ -1,0 +1,42 @@
+version: "3.8"
+services:
+  server:
+    build: .
+    depends_on:
+      - psql
+    volumes:
+      - "`pwd`:/app/"
+    command: >
+      ./run_all.sh
+    environment:
+      CONSUL_IP: 10.60.3.30
+      CONSUL_PORT: 8500
+    ports:
+      - 80:80
+  # server:
+  #   image: docker.chotot.org/cxsvc-backend:latest
+  #   # build: .
+  #   depends_on:
+  #     - psql
+  #   volumes:
+  #     - "/Users/vietky/go/src/github.com/carousell/mco-cxsvc/CxSvc:/go/src/github.com/carousell/CxSvc/CxSvc"
+  #   command: >
+  #     start_local
+  #   environment:
+  #     HOST: host.docker.internal
+  #     CONSUL_IP: 10.60.3.30
+  #     CONSUL_PORT: 8500
+  #   ports:
+  #     - 9281:9281
+  #     - 9282:9282
+  psql:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cxsvc
+    volumes:
+      - ./local/postgres-data:/var/lib/postgresql/data
+      - ./init/:/docker-entrypoint-initdb.d/
+    ports:
+      - 5432:5432
