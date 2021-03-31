@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "cfs/cmd"
+import "github.com/vietky/golang-tmpl/cmd"
 
 func main() {
 	cmd.Execute()
