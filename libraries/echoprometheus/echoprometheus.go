@@ -1,8 +1,11 @@
 package echoprometheus
 
 import (
+	"reflect"
+
 	"github.com/labstack/echo"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"strconv"
@@ -15,6 +18,8 @@ var defaultMetricPath = "/metrics"
 type Prometheus struct {
 	reqCnt *prometheus.CounterVec
 	reqDur *prometheus.HistogramVec
+
+	customCnt prometheus.Counter
 
 	MetricsPath string
 }
@@ -61,6 +66,10 @@ func (p *Prometheus) Use(e *echo.Echo) {
 	e.GET(p.MetricsPath, prometheusHandler())
 }
 
+func isNotFoundHandler(handler echo.HandlerFunc) bool {
+	return reflect.ValueOf(handler).Pointer() == reflect.ValueOf(echo.NotFoundHandler).Pointer()
+}
+
 func (p *Prometheus) middlewareFunc() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) (err error) {
@@ -75,7 +84,9 @@ func (p *Prometheus) middlewareFunc() echo.MiddlewareFunc {
 
 			if err = next(c); err != nil {
 				c.Error(err)
-				ctxPath = "/404"
+				if isNotFoundHandler(c.Handler()) {
+					ctxPath = "/404"
+				}
 			}
 
 			status := strconv.Itoa(c.Response().Status)
@@ -86,7 +97,6 @@ func (p *Prometheus) middlewareFunc() echo.MiddlewareFunc {
 
 			//p.reqCnt.WithLabelValues(status, path).Inc()
 			c.Response().Header().Set("X-Response-Time", strconv.Itoa(int(elapsed*1000)))
-
 			return
 		}
 	}
@@ -101,4 +111,19 @@ func prometheusHandler() echo.HandlerFunc {
 		},
 	)
 	return echo.WrapHandler(h)
+}
+
+// init custom counter
+func (p *Prometheus) NewCustomCounter(key string, des string) {
+	p.customCnt = promauto.NewCounter(prometheus.CounterOpts{
+		Name: key,
+		Help: des,
+	})
+}
+
+// inc custom counter
+func (p *Prometheus) IncCustomCounter() {
+	if p.customCnt != nil {
+		p.customCnt.Inc()
+	}
 }
